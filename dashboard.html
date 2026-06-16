@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cổng Thông Tin Sinh Viên</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: #f4f6f9; color: #333; padding-bottom: 60px; }
+        
+        /* Navbar trên cùng */
+        .navbar { background: #2c3e50; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .navbar-left { display: flex; align-items: center; gap: 15px; }
+        .navbar h2 { margin: 0; font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .logout-btn { background: #e74c3c; color: white; padding: 6px 12px; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 13px; }
+        
+        /* Nút 3 gạch điều hướng */
+        .menu-toggle { background: none; border: none; color: white; font-size: 24px; cursor: pointer; display: block; padding: 0; line-height: 1; }
+
+        /* Thanh Menu bên cạnh (Sidebar) xuất hiện khi bấm 3 gạch */
+        .sidebar { position: fixed; top: 0; left: -250px; width: 250px; height: 100%; background: #2c3e50; z-index: 9999; transition: 0.3s; padding-top: 60px; box-shadow: 2px 0 5px rgba(0,0,0,0.2); }
+        .sidebar.active { left: 0; }
+        .sidebar-menu { list-style: none; padding: 0; margin: 0; }
+        .sidebar-menu li { padding: 15px 20px; color: #ecf0f1; border-bottom: 1px solid #34495e; cursor: pointer; font-weight: 500; font-size: 15px; display: flex; align-items: center; gap: 10px; }
+        .sidebar-menu li:hover, .sidebar-menu li.active { background: #34495e; color: #3498db; }
+        
+        /* Lớp nền mờ khi mở menu trên điện thoại */
+        .sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9998; display: none; }
+        .sidebar-overlay.active { display: block; }
+
+        /* Khu vực hiển thị nội dung các Tab */
+        .container { max-width: 1000px; margin: 20px auto; padding: 0 15px; box-sizing: border-box; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.4s ease; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Giao diện các khối dữ liệu (Card) */
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        h3 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px; margin-top: 0; font-size: 16px; }
+        
+        /* Giao diện Hồ sơ */
+        .profile-container { display: flex; flex-direction: column; gap: 20px; align-items: center; text-align: center; }
+        .avatar-box { width: 110px; height: 110px; border-radius: 50%; border: 4px solid #3498db; object-fit: cover; background: #eee; }
+        .info-grid { display: grid; grid-template-columns: 1fr; gap: 12px; font-size: 15px; width: 100%; text-align: left; background: #f8f9fa; padding: 15px; border-radius: 6px; }
+        
+        /* Giao diện Bảng điểm dạng cuộn ngang trên điện thoại */
+        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 15px; }
+        table { width: 100%; border-collapse: collapse; min-width: 600px; }
+        table, th, td { border: 1px solid #ddd; }
+        th, td { padding: 10px; text-align: left; font-size: 14px; }
+        th { background-color: #f8f9fa; color: #2c3e50; }
+        
+        /* Thời khóa biểu */
+        .lich-item { background: #e8f4fd; padding: 12px; margin: 8px 0; border-left: 4px solid #3498db; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+        .lich-text { flex: 1; word-break: break-word; padding-right: 10px; }
+
+        /* Hệ thống các Nút bấm */
+        .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; text-decoration: none; display: inline-block; font-size: 13px; margin: 2px 0; }
+        .btn-blue { background: #3498db; color: white; }
+        .btn-green { background: #2ecc71; color: white; }
+        .btn-red { background: #e74c3c; color: white; }
+        .btn-orange { background: #e67e22; color: white; }
+        
+        .input-style { padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; margin-bottom: 10px; font-size: 14px; width: 100%; box-sizing: border-box; }
+        .box-subform { background: #f9f9f9; padding: 15px; border: 1px dashed #ccc; border-radius: 6px; display: none; margin-top: 15px; }
+        
+        .badge-pass { background: #2ecc71; color: white; padding: 3px 6px; border-radius: 4px; font-weight: bold; font-size: 11px; }
+        .badge-fail { background: #e74c3c; color: white; padding: 3px 6px; border-radius: 4px; font-weight: bold; font-size: 11px; }
+
+        /* Tối ưu màn hình máy tính lớn */
+        @media (min-width: 768px) {
+            .profile-container { flex-direction: row; text-align: left; }
+            .info-grid { grid-template-columns: 1fr 1fr; }
+            .navbar h2 { font-size: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <nav class="sidebar" id="sidebarMenu">
+        <ul class="sidebar-menu">
+            <li class="tab-btn active" onclick="switchTab('profile')">👤 Hồ Sơ Cá Nhân</li>
+            <li class="tab-btn" onclick="switchTab('grades')">📊 Kết Quả Điểm Số</li>
+            <li class="tab-btn" onclick="switchTab('schedule')">📅 Thời Khoá Biểu</li>
+        </ul>
+    </nav>
+
+    <div class="navbar">
+        <div class="navbar-left">
+            <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+            <h2>QUẢN LÝ SINH VIÊN</h2>
+        </div>
+        <a href="/logout" class="logout-btn">Đăng xuất</a>
+    </div>
+
+    <div class="container">
+        
+        <div id="profile" class="tab-content active">
+            <div class="card">
+                <h3>📌 Hồ Sơ Cá Nhân</h3>
+                <div class="profile-container">
+                    <img src="{{ sv['avatar'] }}" class="avatar-box" alt="Avatar">
+                    <div class="info-grid">
+                        <div><strong>Họ và tên:</strong> {{ sv['hoten'] }}</div>
+                        <div><strong>Lớp học:</strong> {{ sv['lop'] }}</div>
+                        <div><strong>Tên đăng nhập:</strong> <span style="color:#e67e22; font-weight:bold;">{{ sv['username'] }}</span></div>
+                        <div><strong>Mật khẩu:</strong> ******</div>
+                    </div>
+                </div>
+                <button class="btn btn-blue" style="margin-top: 15px; width: 100%; padding: 10px;" onclick="toggleSubForm('formProfile')">⚙️ Thay đổi thông tin tài khoản</button>
+                
+                <form id="formProfile" class="box-subform" action="/update_profile" method="POST" enctype="multipart/form-data">
+                    <h4>Chỉnh sửa hồ sơ:</h4>
+                    Họ và tên: <input type="text" name="hoten" value="{{ sv['hoten'] }}" class="input-style" required>
+                    Lớp học: <input type="text" name="lop" value="{{ sv['lop'] }}" class="input-style" required>
+                    Tên đăng nhập mới: <input type="text" name="username" value="{{ sv['username'] }}" class="input-style" required>
+                    Mật khẩu mới: <input type="text" name="password" value="{{ sv['password'] }}" class="input-style" required>
+                    Chọn ảnh đại diện mới: <input type="file" name="avatar_file" accept="image/*" class="input-style" style="background: white; padding: 5px;">
+                    <button type="submit" class="btn btn-green" style="width: 100%; padding: 10px; margin-top: 10px;">💾 Lưu thay đổi</button>
+                </form>
+            </div>
+        </div>
+
+        <div id="grades" class="tab-content">
+            <div class="card">
+                <h3>📊 Kết Quả Điểm Số & Môn Học</h3>
+                
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Môn Học</th>
+                                <th>TC</th>
+                                <th>Quá Trình (40%)</th>
+                                <th>Cuối Kỳ (60%)</th>
+                                <th>Điểm TB</th>
+                                <th>Kết quả</th>
+                                <th>Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for mon in diem_so %}
+                            <tr>
+                                <td><strong>{{ mon['ten_mon'] }}</strong></td>
+                                <td>{{ mon['tin_chi'] }}</td>
+                                <td>{{ mon['diem_qt'] }}</td>
+                                <td>{{ mon['diem_ck'] }}</td>
+                                <td style="color: blue; font-weight: bold;">{{ mon['diem_tb'] }}</td>
+                                <td>
+                                    {% if mon['trang_thai'] == 'Đạt' %}
+                                        <span class="badge-pass">Đạt</span>
+                                    {% else %}
+                                        <span class="badge-fail">Học lại</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <button class="btn btn-orange" onclick="openEditForm('{{ mon['id'] }}', '{{ mon['ten_mon'] }}', '{{ mon['diem_qt'] }}', '{{ mon['diem_ck'] }}')">✏️ Sửa</button>
+                                    <a href="/delete_grade/{{ mon['id'] }}" class="btn btn-red" onclick="return confirm('Bạn chắc chắn muốn xóa môn này?')">❌ Xóa</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <button class="btn btn-blue" style="margin-top: 15px; width: 100%; padding: 10px;" onclick="toggleSubForm('boxAddMon')">➕ Thêm môn học mới</button>
+                
+                <form id="boxAddMon" class="box-subform" action="/add_grade" method="POST">
+                    <h5>Nhập thông tin môn học:</h5>
+                    Tên môn học: <input type="text" name="new_mon" class="input-style" placeholder="Ví dụ: Cấu trúc dữ liệu" required>
+                    Số tín chỉ: <input type="number" name="new_tc" class="input-style" placeholder="3" required>
+                    Điểm Quá Trình (40%): <input type="number" step="0.1" min="0" max="10" name="new_diem_qt" class="input-style" placeholder="8.5" required>
+                    Điểm Cuối Kỳ (60%): <input type="number" step="0.1" min="0" max="10" name="new_diem_ck" class="input-style" placeholder="7.0" required>
+                    <button type="submit" class="btn btn-green" style="width: 100%; padding: 10px;">💾 Thêm vào danh sách</button>
+                </form>
+
+                <form id="boxEditMon" class="box-subform" action="/edit_grade" method="POST" style="background: #fff3e0; border-color: #ffb74d;">
+                    <h5>✏️ Cập nhật điểm môn: <span id="edit_name" style="color: #e67e22;"></span></h5>
+                    <input type="hidden" name="mon_id" id="edit_id">
+                    Điểm Quá Trình mới: <input type="number" step="0.1" min="0" max="10" name="diem_qt" id="edit_qt" class="input-style" required>
+                    Điểm Cuối Kỳ mới: <input type="number" step="0.1" min="0" max="10" name="diem_ck" id="edit_ck" class="input-style" required>
+                    <div style="display: flex; gap: 10px;">
+                        <button type="submit" class="btn btn-green" style="flex: 1; padding: 10px;">💾 Cập nhật</button>
+                        <button type="button" class="btn btn-red" style="flex: 1; padding: 10px;" onclick="document.getElementById('boxEditMon').style.display='none'">Hủy</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="schedule" class="tab-content">
+            <div class="card">
+                <h3>📅 Thời Khóa Biểu Toàn Diện</h3>
+                <div>
+                    {% if not lich_hoc %}
+                        <p style="text-align: center; color: #999; padding: 20px 0;">Chưa có lịch học nào được thêm.</p>
+                    {% endif %}
+                    {% for l in lich_hoc %}
+                        <div class="lich-item">
+                            <span class="lich-text">{{ l['noi_dung'] }}</span>
+                            <a href="/delete_schedule/{{ l['id'] }}" class="btn btn-red" style="padding: 4px 8px;" onclick="return confirm('Xóa lịch học này?')">❌ Xóa</a>
+                        </div>
+                    {% endfor %}
+                </div>
+                
+                <button class="btn btn-blue" style="margin-top: 15px; width: 100%; padding: 10px;" onclick="toggleSubForm('boxAddLich')">➕ Thêm lịch học mới</button>
+                
+                <form id="boxAddLich" class="box-subform" action="/add_schedule" method="POST">
+                    <h5>Nhập lịch học mới:</h5>
+                    <input type="text" name="new_lich" class="input-style" placeholder="Ví dụ: Thứ 2 (Tiết 1-3): Tin đại cương - Phòng 401" required>
+                    <button type="submit" class="btn btn-green" style="width: 100%; padding: 10px;">💾 Thêm vào lịch trình</button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Hàm đóng/mở Menu 3 gạch bên trái
+        function toggleSidebar() {
+            document.getElementById('sidebarMenu').classList.toggle('active');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        }
+
+        // Hàm chuyển đổi qua lại giữa các trang Tab dữ liệu
+        function switchTab(tabId) {
+            // Ẩn toàn bộ các tab nội dung
+            var contents = document.querySelectorAll('.tab-content');
+            contents.forEach(function(c) { c.classList.remove('active'); });
+            
+            // Bỏ active ở các nút bấm menu
+            var buttons = document.querySelectorAll('.tab-btn');
+            buttons.forEach(function(b) { b.classList.remove('active'); });
+            
+            // Hiển thị tab được chọn
+            document.getElementById(tabId).classList.add('active');
+            
+            // Tìm và kích hoạt nút menu tương ứng
+            var currentBtn = Array.from(buttons).find(btn => btn.getAttribute('onclick').includes(tabId));
+            if(currentBtn) currentBtn.classList.add('active');
+            
+            // Tự động đóng menu sau khi bấm chọn tab (dành cho điện thoại)
+            document.getElementById('sidebarMenu').classList.remove('active');
+            document.getElementById('sidebarOverlay').classList.remove('active');
+        }
+
+        // Đóng mở các form nhỏ (Thêm môn, Sửa hồ sơ...)
+        function toggleSubForm(id) {
+            var el = document.getElementById(id);
+            el.style.display = (el.style.display === "block") ? "none" : "block";
+        }
+
+        // Mở form chỉnh sửa điểm riêng biệt
+        function openEditForm(id, name, qt, ck) {
+            document.getElementById('boxEditMon').style.display = "block";
+            document.getElementById('edit_id').value = id;
+            document.getElementById('edit_name').innerText = name;
+            document.getElementById('edit_qt').value = qt;
+            document.getElementById('edit_ck').value = ck;
+            document.getElementById('boxEditMon').scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
